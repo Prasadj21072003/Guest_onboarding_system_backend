@@ -47,7 +47,7 @@ exports.createHotel = async (req, res) => {
 
       QRCode.toFile(
         path.join(correctpath, `${randomName}.png`),
-        `http://localhost:5173/guestform/${newhotel._id}`,
+        `https://coruscating-centaur-4a62e3.netlify.app/guestform/${newhotel._id}`,
         (err) => {
           if (err) throw err;
         }

@@ -2,7 +2,8 @@ const Hotel = require("../models/Hotel");
 var QRCode = require("qrcode");
 const path = require("path");
 const crypto = require("crypto");
-
+const cloudinary = require("cloudinary");
+const streamifier = require("streamifier");
 // Get all hotels
 exports.getAllHotels = async (req, res) => {
   if (req?.user) {
@@ -32,10 +33,12 @@ exports.getHotelById = async (req, res) => {
 exports.createHotel = async (req, res) => {
   if (req?.user) {
     try {
-      console.log;
-      var correctpath = path.join(__dirname, "..", "public", "QR");
-      randomName = crypto.randomBytes(12).toString("hex");
-      var logo = req.file.filename;
+      let logoname = req.file.filename;
+      let logopath = req.file.path;
+      const logoUpload = await cloudinary.uploader.upload(logopath, {
+        public_id: `${logoname}-logo`,
+      });
+      const logo = logoUpload.secure_url;
       const { name, address, guestpanelemail, guestpanelpass } = req.body;
       const newhotel = new Hotel({
         logo,
@@ -45,17 +48,34 @@ exports.createHotel = async (req, res) => {
         guestpanelpass,
       });
 
-      QRCode.toFile(
-        path.join(correctpath, `${randomName}.png`),
-        `https://coruscating-centaur-4a62e3.netlify.app/guestform/${newhotel._id}`,
-        (err) => {
-          if (err) throw err;
-        }
+      // Generate QR Code Buffer
+      const qrBuffer = await QRCode.toBuffer(
+        `https://coruscating-centaur-4a62e3.netlify.app/guestform/${newhotel._id}`
       );
 
-      newhotel.qr = `${randomName}.png`;
-      await newhotel.save();
-      res.status(201).json(newhotel);
+      try {
+        let uploadstream = cloudinary.uploader.upload_stream(function (
+          result,
+          error
+        ) {
+          if (error !== undefined) {
+            console.log("error " + error);
+            res.json(error);
+          } else if (result !== undefined) {
+            const func = async () => {
+              newhotel.qr = `${result.secure_url}`;
+              await newhotel.save();
+              res.status(201).json(newhotel);
+            };
+
+            func();
+          }
+        });
+
+        streamifier.createReadStream(qrBuffer).pipe(uploadstream);
+      } catch (error) {
+        console.log(error);
+      }
     } catch (error) {
       res.status(500).json({ message: "Error creating Hotel", error });
     }

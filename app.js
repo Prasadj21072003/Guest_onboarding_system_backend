@@ -1,16 +1,26 @@
+/* These lines of code are importing necessary modules and files for setting up a Node.js server using
+Express framework and MongoDB with Mongoose. */
 const express = require("express");
 const mongoose = require("mongoose");
 const hotelRoutes = require("./routes/Hotelroutes");
 const guestRoutes = require("./routes/Guestroutes");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const cloudinary = require("cloudinary").v2;
 require("dotenv").config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_SECRET_KEY,
+});
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static("public"));
 
+/* The `mongoose.connect()` function is establishing a connection to a MongoDB database using Mongoose. */
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,

@@ -6,6 +6,7 @@ const cloudinary = require("cloudinary");
 const streamifier = require("streamifier");
 const Redis = require("ioredis");
 
+//connecting redis
 const redis = new Redis({
   host: process.env.REDIS_HOST,
   password: process.env.REDIS_PASSWORD,

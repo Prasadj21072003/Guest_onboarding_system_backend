@@ -7,12 +7,20 @@ const guestRoutes = require("./routes/Guestroutes");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const cloudinary = require("cloudinary").v2;
+const Redis = require("ioredis");
 require("dotenv").config();
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_SECRET_KEY,
+});
+
+//connecting redis
+export const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  password: process.env.REDIS_PASSWORD,
+  port: process.env.REDIS_PORT,
 });
 
 const app = express();

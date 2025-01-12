@@ -4,11 +4,34 @@ const path = require("path");
 const crypto = require("crypto");
 const cloudinary = require("cloudinary");
 const streamifier = require("streamifier");
+const Redis = require("ioredis");
+
+const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  password: process.env.REDIS_PASSWORD,
+  port: process.env.REDIS_PORT,
+});
+redis.on("connect", () => {
+  console.log("redis connected");
+});
+
+redis.on("error", (err) => {
+  console.error("Redis connection error:", err);
+});
+
 // Get all hotels
 exports.getAllHotels = async (req, res) => {
   if (req?.user) {
     try {
+      const cachedhotels = await redis.get("hotelslist");
+
+      if (cachedhotels) {
+        console.log("Returning cached projects");
+        return res.json(JSON.parse(cachedhotels));
+      }
       const hotels = await Hotel.find();
+      // Cache the result in Redis for future requests
+      await redis.set("hotelslist", JSON.stringify(hotels));
       res.status(200).json(hotels);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -65,6 +88,12 @@ exports.createHotel = async (req, res) => {
             const func = async () => {
               newhotel.qr = `${result.secure_url}`;
               await newhotel.save();
+              // Clear Redis cache after saving the new hotel
+              const cachedhotels = await redis.get("hotelslist");
+              if (cachedhotels) {
+                await redis.del("hotelslist");
+                console.log("Redis cache cleared for key: hotelslist");
+              }
               res.status(201).json(newhotel);
             };
 
@@ -88,6 +117,11 @@ exports.deleteHotelById = async (req, res) => {
     try {
       const hotel = await Hotel.findByIdAndDelete(req.params.id);
       if (!hotel) return res.status(404).json({ message: "Hotel not found" });
+      const cachedhotels = await redis.get("hotelslist");
+      if (cachedhotels) {
+        await redis.del("hotelslist");
+        console.log("Redis cache cleared for key: hotelslist");
+      }
       res.status(200).json({ message: "Hotel deleted successfully" });
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -104,6 +138,11 @@ exports.updateHotelById = async (req, res) => {
           new: true,
         });
         if (!hotel) return res.status(404).json({ message: "Hotel not found" });
+        const cachedhotels = await redis.get("hotelslist");
+        if (cachedhotels) {
+          await redis.del("hotelslist");
+          console.log("Redis cache cleared for key: hotelslist");
+        }
         res.status(200).json(hotel);
       } catch (err) {
         res.status(500).json({ error: err.message });
